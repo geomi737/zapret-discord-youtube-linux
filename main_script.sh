@@ -156,6 +156,9 @@ parse_bat_file() {
             local ports="${BASH_REMATCH[2]}"
             local nfqws_args="${BASH_REMATCH[3]}"
             
+            # Replace %LISTS% with 'lists/' in nfqws_args
+            nfqws_args="${nfqws_args//%LISTS%/lists/}"
+            
             nft_rules+=("$protocol dport {$ports} counter queue num $queue_num bypass")
             nfqws_params+=("$nfqws_args")
             debug_log "Matched protocol: $protocol, ports: $ports, queue: $queue_num"

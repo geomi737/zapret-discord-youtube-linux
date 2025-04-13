@@ -74,6 +74,7 @@ setup_repository() {
             log "Обновление репозитория..."
             rm -rf "$REPO_DIR"
             git clone "$REPO_URL" "$REPO_DIR" || handle_error "Ошибка при клонировании репозитория"
+            cd "$REPO_DIR" && git checkout 2ed3c1e279b99a3b5f16ad00ebd46e37926a3ba4 && cd ..
             # rename_bat.sh
             chmod +x "$BASE_DIR/rename_bat.sh"
             rm -rf "$REPO_DIR/.git"
@@ -84,6 +85,7 @@ setup_repository() {
     else
         log "Клонирование репозитория..."
         git clone "$REPO_URL" "$REPO_DIR" || handle_error "Ошибка при клонировании репозитория"
+        cd "$REPO_DIR" && git checkout 2ed3c1e279b99a3b5f16ad00ebd46e37926a3ba4 && cd ..
         # rename_bat.sh
         chmod +x "$BASE_DIR/rename_bat.sh"
         rm -rf "$REPO_DIR/.git"

@@ -62,6 +62,7 @@ load_config() {
 
     # Проверка обязательных переменных
     if [ -z "$interface" ] || [ -z "$gamefilter" ] || [ -z "$strategy" ]; then
+        rm $CONF_FILE
         first_nointeractive_handler
     fi
 }

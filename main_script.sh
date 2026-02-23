@@ -52,18 +52,40 @@ check_dependencies() {
     done
 }
 
-# Функция чтения конфигурационного файла
+# Функция чтения конфигурационного файла -nointeractive
 load_config() {
-    if [ ! -f "$CONF_FILE" ]; then
-        handle_error "Файл конфигурации $CONF_FILE не найден"
-    fi
+    # handle_error "Файл конфигурации $CONF_FILE не найден" - старая обработка
+    first_nointeractive_handler
 
     # Чтение переменных из конфигурационного файла
     source "$CONF_FILE"
 
     # Проверка обязательных переменных
     if [ -z "$interface" ] || [ -z "$gamefilter" ] || [ -z "$strategy" ]; then
-        handle_error "Отсутствуют обязательные параметры в конфигурационном файле"
+        rm "$CONF_FILE"
+        first_nointeractive_handler
+    fi
+}
+
+first_nointeractive_handler() {
+    if [ ! -f "$CONF_FILE" ]; then
+        # Вывод приветствия
+        log "Первая настройка -nointeractive"
+
+        # Создание conf файла
+        touch "$CONF_FILE"
+
+        # Получение значения gamefilter
+        gamefilter_ask
+        echo "gamefilter=$USE_GAME_FILTER" >> "$CONF_FILE"
+
+        # Получение стратегии
+        select_strategy
+        echo "strategy=${strategy#./}" >> "$CONF_FILE"
+
+        # Получение интерфейса
+        setup_interface
+        echo "interface=$interface" >> "$CONF_FILE"
     fi
 }
 
@@ -91,23 +113,14 @@ find_bat_files() {
 
 # Функция для выбора стратегии
 select_strategy() {
-    # Сначала собираем кастомные файлы
+
+    # Сборка кастомных стратегий
     local custom_files=()
     if [ -d "$CUSTOM_DIR" ]; then
         cd "$CUSTOM_DIR" && custom_files=($(ls *.bat 2>/dev/null)) && cd ..
     fi
 
     cd "$REPO_DIR" || handle_error "Не удалось перейти в директорию $REPO_DIR"
-
-    if $NOINTERACTIVE; then
-        if [ ! -f "$strategy" ] && [ ! -f "../$CUSTOM_DIR/$strategy" ]; then
-            handle_error "Указанный .bat файл стратегии $strategy не найден"
-        fi
-        # Проверяем, где лежит файл, чтобы распарсить
-        [ -f "$strategy" ] && parse_bat_file "$strategy" || parse_bat_file "../$CUSTOM_DIR/$strategy"
-        cd ..
-        return
-    fi
 
     # Собираем стандартные файлы
     local IFS=$'\n'
@@ -121,10 +134,31 @@ select_strategy() {
         handle_error "Не найдены подходящие .bat файлы"
     fi
 
+    # NOINTERACTIVE выход если стратегия уже в конфигурации 
+    if $NOINTERACTIVE; then
+        # Проверка существования $strategy как переменной
+        if [[ -n $strategy ]]; then
+            #Проверка существования $strategy как файла
+            if [ ! -f "$strategy" ] && [ ! -f "../$CUSTOM_DIR/$strategy" ]; then
+                handle_error "Указанный .bat файл стратегии $strategy не найден"
+            fi
+            # Проверка, где лежит файл, чтобы распарсить
+            [ -f "$strategy" ] && parse_bat_file "$strategy" || parse_bat_file "../$CUSTOM_DIR/$strategy"
+            cd ..
+            return
+        fi
+    fi
+    
+
     echo "Доступные стратегии:"
     select strategy in "${bat_files[@]}"; do
         if [ -n "$strategy" ]; then
             log "Выбрана стратегия: $strategy"
+            
+            # Проверяем режим -nointeractive
+            if $NOINTERACTIVE; then 
+                break
+            fi
 
             # Определяем полный путь для парсера перед выходом из папки
             local final_path=""
@@ -137,6 +171,7 @@ select_strategy() {
             cd ..
             parse_bat_file "$final_path"
             break
+
         fi
         echo "Неверный выбор. Попробуйте еще раз."
     done
@@ -270,18 +305,50 @@ start_nfqws() {
         handle_error "Ошибка при запуске nfqws"
 }
 
+# Функция получения GameFilter значения
+gamefilter_ask() {
+    echo ""
+    read -p "Включить GameFilter? [y/N]:" enable_gamefilter
+    if [[ "$enable_gamefilter" =~ ^[Yy1] ]]; then
+        USE_GAME_FILTER=true
+        log "GameFilter включен"
+    else
+        USE_GAME_FILTER=false
+        log "GameFilter выключен"
+    fi
+}
+
+# Функция получения сетевого интерфейса
+setup_interface() {
+    local interfaces=("any" $(ls /sys/class/net))
+    if [ ${#interfaces[@]} -eq 0 ]; then
+        handle_error "Не найдены сетевые интерфейсы"
+    fi
+    echo "Доступные сетевые интерфейсы:"
+    select interface in "${interfaces[@]}"; do
+        if [ -n "$interface" ]; then
+            log "Выбран интерфейс: $interface"
+            break
+        fi
+        echo "Неверный выбор. Попробуйте еще раз."
+    done
+}
+
 # Основная функция
 main() {
+
+    #Основной скрипт
     while [[ $# -gt 0 ]]; do
         case "$1" in
         -debug)
             DEBUG=true
             shift
             ;;
+
+        
         -nointeractive)
             NOINTERACTIVE=true
             shift
-            load_config
             ;;
         *)
             break
@@ -289,11 +356,13 @@ main() {
         esac
     done
 
+    #Проверка зависимостей
     check_dependencies
     setup_repository
 
     # Включение GameFilter
     if $NOINTERACTIVE; then
+        load_config 
         _term
         sleep 1
 
@@ -305,15 +374,7 @@ main() {
             log "GameFilter выключен"
         fi
     else
-        echo ""
-        read -p "Включить GameFilter? [y/N]:" enable_gamefilter
-        if [[ "$enable_gamefilter" =~ ^[Yy1] ]]; then
-            USE_GAME_FILTER=true
-            log "GameFilter включен"
-        else
-            USE_GAME_FILTER=false
-            log "GameFilter выключен"
-        fi
+        gamefilter_ask
     fi
 
     if $NOINTERACTIVE; then
@@ -321,18 +382,7 @@ main() {
         setup_nftables "$interface"
     else
         select_strategy
-        local interfaces=("any" $(ls /sys/class/net))
-        if [ ${#interfaces[@]} -eq 0 ]; then
-            handle_error "Не найдены сетевые интерфейсы"
-        fi
-        echo "Доступные сетевые интерфейсы:"
-        select interface in "${interfaces[@]}"; do
-            if [ -n "$interface" ]; then
-                log "Выбран интерфейс: $interface"
-                break
-            fi
-            echo "Неверный выбор. Попробуйте еще раз."
-        done
+        setup_interface
         setup_nftables "$interface"
     fi
     start_nfqws

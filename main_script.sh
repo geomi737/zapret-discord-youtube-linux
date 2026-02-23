@@ -314,6 +314,8 @@ zapret_version_ask() {
 lists_init() {
     mkdir -p "$LISTS_DIR"
     cp "$ORIGIN_LISTS_DIR"/* "$LISTS_DIR/"
+    sudo chmod 707 "$LISTS_DIR"
+    sudo chmod 606 "$LISTS_DIR"/*
     log "Успешно создана папка lists"
 }
 

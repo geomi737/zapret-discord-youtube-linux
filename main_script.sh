@@ -77,15 +77,15 @@ first_nointeractive_handler() {
 
         # Получение значения gamefilter
         gamefilter_ask
-        echo "gamefilter=$USE_GAME_FILTER" >> $CONF_FILE
+        echo "gamefilter=$USE_GAME_FILTER" >> "$CONF_FILE"
 
         # Получение стратегии
         select_strategy
-        echo "strategy=${strategy#./}" >> $CONF_FILE
+        echo "strategy=${strategy#./}" >> "$CONF_FILE"
 
         # Получение интерфейса
         setup_interface
-        echo "interface=$interface" >> $CONF_FILE
+        echo "interface=$interface" >> "$CONF_FILE"
         
         #Перезапуск
         _term

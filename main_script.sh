@@ -62,7 +62,7 @@ load_config() {
 
     # Проверка обязательных переменных
     if [ -z "$interface" ] || [ -z "$gamefilter" ] || [ -z "$strategy" ]; then
-        rm $CONF_FILE
+        rm "$CONF_FILE"
         first_nointeractive_handler
     fi
 }
@@ -73,7 +73,7 @@ first_nointeractive_handler() {
         log "Первая настройка -nointeractive"
 
         # Создание conf файла
-        touch $CONF_FILE
+        touch "$CONF_FILE"
 
         # Получение значения gamefilter
         gamefilter_ask

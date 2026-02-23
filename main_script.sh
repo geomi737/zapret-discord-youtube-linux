@@ -7,14 +7,18 @@ BASE_DIR="$(realpath "$(dirname "$0")")"
 REPO_DIR="$BASE_DIR/zapret-latest"
 CUSTOM_DIR="./custom-strategies"
 REPO_URL="https://github.com/Flowseal/zapret-discord-youtube"
+STRATEGY_DIR="$BASE_DIR/repo-strategies"
 NFQWS_PATH="$BASE_DIR/nfqws"
 CONF_FILE="$BASE_DIR/conf.env"
 STOP_SCRIPT="$BASE_DIR/stop_and_clean_nft.sh"
 MAIN_REPO_REV="7952e58ee8b068b731d55d2ef8f491fd621d6ff0"
+LISTS_DIR="$BASE_DIR/lists"
+ORIGIN_LISTS_DIR="$BASE_DIR/zapret-latest/lists"
 
 # Флаг отладки
 DEBUG=false
 NOINTERACTIVE=false
+SWITCHVER=false
 
 # GameFilter
 GAME_FILTER_PORTS="1024-65535"
@@ -70,15 +74,22 @@ load_config() {
 # Функция для настройки репозитория
 setup_repository() {
     if [ -d "$REPO_DIR" ]; then
+        if $SWITCHVER; then
+            zapret_version_ask
+            return
+        fi
         log "Использование существующей версии репозитория."
         return
     else
         log "Клонирование репозитория..."
         git clone "$REPO_URL" "$REPO_DIR" || handle_error "Ошибка при клонировании репозитория"
-        cd "$REPO_DIR" && git checkout $MAIN_REPO_REV && cd ..
-        # rename_bat.sh
+        cd "$REPO_DIR"
         chmod +x "$BASE_DIR/rename_bat.sh"
-        rm -rf "$REPO_DIR/.git"
+        git checkout $MAIN_REPO_REV
+        cd ..
+        # Инициализация lists
+        lists_init
+        # Переименование стратегий
         "$BASE_DIR/rename_bat.sh" || handle_error "Ошибка при переименовании файлов"
     fi
 }
@@ -97,7 +108,7 @@ select_strategy() {
         cd "$CUSTOM_DIR" && custom_files=($(ls *.bat 2>/dev/null)) && cd ..
     fi
 
-    cd "$REPO_DIR" || handle_error "Не удалось перейти в директорию $REPO_DIR"
+    cd "$STRATEGY_DIR" || handle_error "Не удалось перейти в директорию $STRATEGY_DIR"
 
     if $NOINTERACTIVE; then
         if [ ! -f "$strategy" ] && [ ! -f "../$CUSTOM_DIR/$strategy" ]; then
@@ -129,9 +140,9 @@ select_strategy() {
             # Определяем полный путь для парсера перед выходом из папки
             local final_path=""
             if [ -f "$strategy" ]; then
-                final_path="$REPO_DIR/$strategy"
+                final_path="$STRATEGY_DIR/$strategy"
             else
-                final_path="$REPO_DIR/../$CUSTOM_DIR/$strategy"
+                final_path="$STRATEGY_DIR/../$CUSTOM_DIR/$strategy"
             fi
 
             cd ..
@@ -267,7 +278,55 @@ start_nfqws() {
 
     debug_log "Запуск nfqws с параметрами: $NFQWS_PATH --daemon --dpi-desync-fwmark=0x40000000 --qnum=220 $full_params"
     eval "sudo $NFQWS_PATH --daemon --dpi-desync-fwmark=0x40000000 --qnum=220 $full_params" ||
-        handle_error "Ошибка при запуске nfqws"
+        # Проверка версии zapret
+        if ! [[ $version == $MAIN_REPO_REV ]]; then
+            handle_error "Выбранная версия zapret не поддерживается"
+        else
+            handle_error "Ошибка при запуске nfqws"
+        fi
+}   
+
+# Функция выбора версии zapret от flowseal
+zapret_version_ask() {
+    cd "$REPO_DIR"
+    echo "Выберите версию zapret"
+    select version in "$MAIN_REPO_REV (default)" $(git tag); do
+        if [[ -n "$version" ]]; then
+            log "Выбрана версия $version"
+            if [[ "$MAIN_REPO_REV (default)" == "$version" ]]; then
+                git checkout -f $MAIN_REPO_REV
+            else
+                git checkout -f $version
+            fi
+            # Выходим
+            cd "$BASE_DIR"
+            # Переименовываем
+            "$BASE_DIR/rename_bat.sh" || handle_error "Ошибка при переименовании файлов"
+            # Выключаем
+            exit 0
+        fi
+        echo "Такой версии нет"
+    done
+}
+
+# Функция инициализации lists
+lists_init() {
+    if [ -d "$ORIGIN_LISTS_DIR" ]; then
+        mkdir -p "$LISTS_DIR"
+        cp "$ORIGIN_LISTS_DIR"/* "$LISTS_DIR/"
+        sudo chmod 707 "$LISTS_DIR"
+        sudo chmod 606 "$LISTS_DIR"/*
+        log "Успешно проиницализирована папка lists"
+    fi
+}
+
+# Функция перемещения lists
+lists_move() {
+    if [ -d "$ORIGIN_LISTS_DIR" ]; then
+        rm "$ORIGIN_LISTS_DIR"/*
+        cp "$LISTS_DIR"/* "$ORIGIN_LISTS_DIR"
+        log "Скопированы lists"
+    fi
 }
 
 # Основная функция
@@ -283,6 +342,10 @@ main() {
             shift
             load_config
             ;;
+        -switchver)
+            SWITCHVER=true
+            shift
+            ;;
         *)
             break
             ;;
@@ -291,6 +354,7 @@ main() {
 
     check_dependencies
     setup_repository
+    lists_move
 
     # Включение GameFilter
     if $NOINTERACTIVE; then

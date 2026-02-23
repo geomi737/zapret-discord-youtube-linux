@@ -1,7 +1,18 @@
 #!/usr/bin/env bash
 
+# Корень zapret
+BASE_DIR="$(realpath "$(dirname "$0")")"
+
 # Директория для обработки
-TARGET_DIR="zapret-latest"
+TARGET_DIR="$BASE_DIR/zapret-latest"
+
+# Директория для сохранения
+STRATEGY_DIR="$BASE_DIR/repo-strategies"
+
+mkdir -p "$STRATEGY_DIR"
+
+#Удаление существовавших стратегий
+rm -f "$STRATEGY_DIR"/*.bat
 
 # Функция для транслитерации русских символов в латинские
 transliterate() {
@@ -37,16 +48,7 @@ find "$TARGET_DIR" -type f -name "*.bat" | while read -r file; do
     new_name=$(echo "$new_name" | sed 's/__\+/_/g')            # Замена нескольких подчеркиваний на одно
     new_name=$(echo "$new_name" | sed 's/_\+\.bat/.bat/g')     # Очистка подчеркивания перед расширением
     
-    # Пропуск, если изменения не требуются
-    if [ "$old_name" = "$new_name" ]; then
-        continue
-    fi
+    cp "$dir/$old_name" "$STRATEGY_DIR/$new_name"
+    echo "Переименовано: '$old_name' -> '$new_name'"
     
-    # Переименование файла
-    if [ -f "$dir/$new_name" ] && [ "$old_name" != "$new_name" ]; then
-        echo "Warning: Не удалось переименовать '$old_name' в '$new_name' - целевой файл уже существует"
-    else
-        mv "$dir/$old_name" "$dir/$new_name"
-        echo "Переименовано: '$old_name' -> '$new_name'"
-    fi
 done

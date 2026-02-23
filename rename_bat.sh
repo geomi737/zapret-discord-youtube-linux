@@ -9,6 +9,8 @@ TARGET_DIR="$BASE_DIR/zapret-latest"
 # Директория для сохранения
 STRATEGY_DIR="$BASE_DIR/repo-strategies"
 
+mkdir "$STRATEGY_DIR"
+
 #Удаление существовавших стратегий
 rm -f "$STRATEGY_DIR"/*.bat
 

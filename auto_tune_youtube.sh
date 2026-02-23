@@ -16,6 +16,8 @@ REPO_DIR="$SCRIPT_DIR/zapret-latest"
 CUSTOM_DIR="$SCRIPT_DIR/custom-strategies"
 CONF_FILE="$SCRIPT_DIR/conf.env"
 RESULTS_FILE="$SCRIPT_DIR/auto_tune_youtube_results.txt"
+STRATEGY_DIR="$SCRIPT_DIR/repo-strategies"
+
 
 WAIT_TIME=2           # Пауза после запуска стратегии (сек)
 CURL_TIMEOUT=3        # Таймаут curl (сек)
@@ -39,6 +41,11 @@ SUCCESS_COUNT=0
 FAILED_COUNT=0
 
 # ═══════════════════════════════════════════════════════════
+# Предохранитель первого запуска
+# ═══════════════════════════════════════════════════════════
+"$SCRIPT_DIR/rename_bat.sh"
+
+# ═══════════════════════════════════════════════════════════
 # ФУНКЦИИ: Работа со стратегиями
 # ═══════════════════════════════════════════════════════════
 
@@ -51,10 +58,10 @@ load_strategy_files() {
         done
     fi
     # 2. Стандартные из репозитория
-    if [[ -d "$REPO_DIR" ]]; then
+    if [[ -d "$STRATEGY_DIR" ]]; then
         while IFS= read -r -d '' file; do
             STRATEGY_FILES+=("$(basename "$file")")
-        done < <(find "$REPO_DIR" -maxdepth 1 -type f \( -name "general*.bat" -o -name "discord.bat" \) -print0)
+        done < <(find "$STRATEGY_DIR" -maxdepth 1 -type f \( -name "general*.bat" -o -name "discord.bat" \) -print0)
     fi
 }
 

@@ -5,7 +5,7 @@ set -e
 # Константы
 BASE_DIR="$(realpath "$(dirname "$0")")"
 REPO_DIR="$BASE_DIR/zapret-latest"
-CUSTOM_DIR="$BASE_DIR/custom-strategies"
+CUSTOM_DIR="./custom-strategies"
 REPO_URL="https://github.com/Flowseal/zapret-discord-youtube"
 NFQWS_PATH="$BASE_DIR/nfqws"
 CONF_FILE="$BASE_DIR/conf.env"
@@ -73,8 +73,9 @@ setup_repository() {
         log "Использование существующей версии репозитория."
         return
     else
+        zapret_version_ask
         log "Клонирование репозитория..."
-        git clone "$REPO_URL" "$REPO_DIR" || handle_error "Ошибка при клонировании репозитория"
+        git clone --depth 1 --branch $version $REPO_URL || handle_error "Ошибка при клонировании репозитория"
         cd "$REPO_DIR" && git checkout $MAIN_REPO_REV && cd ..
         # rename_bat.sh
         chmod +x "$BASE_DIR/rename_bat.sh"
@@ -268,6 +269,17 @@ start_nfqws() {
     debug_log "Запуск nfqws с параметрами: $NFQWS_PATH --daemon --dpi-desync-fwmark=0x40000000 --qnum=220 $full_params"
     eval "sudo $NFQWS_PATH --daemon --dpi-desync-fwmark=0x40000000 --qnum=220 $full_params" ||
         handle_error "Ошибка при запуске nfqws"
+}
+
+#Функция выбора версии zapret от flowseal
+zapret_version_ask() {
+    echo "Выберите версию zapret"
+    select version in $(git tag); do
+        if [[ -n version ]]; then
+            log "Выбрана версия $version"
+            break
+        echo "Такой версии нет"
+    done
 }
 
 # Основная функция

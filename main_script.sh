@@ -12,6 +12,8 @@ NFQWS_PATH="$BASE_DIR/nfqws"
 CONF_FILE="$BASE_DIR/conf.env"
 STOP_SCRIPT="$BASE_DIR/stop_and_clean_nft.sh"
 MAIN_REPO_REV="7952e58ee8b068b731d55d2ef8f491fd621d6ff0"
+LISTS_DIR="$BASE_DIR/lists_cloned"
+ORIGIN_LISTS_DIR="$BASE_DIR/zapret-latest/lists"
 
 # Флаг отладки
 DEBUG=false
@@ -90,7 +92,10 @@ setup_repository() {
             git checkout $MAIN_REPO_REV
         fi
         cd ..
-        # rm -rf "$REPO_DIR/.git"
+
+        # Инициализация lists
+        lists_init
+        # Переименование стратегий
         "$BASE_DIR/rename_bat.sh" || handle_error "Ошибка при переименовании файлов"
     fi
 }
@@ -282,7 +287,7 @@ start_nfqws() {
         handle_error "Ошибка при запуске nfqws"
 }
 
-#Функция выбора версии zapret от flowseal
+# Функция выбора версии zapret от flowseal
 zapret_version_ask() {
     cd "$REPO_DIR"
     echo "Выберите версию zapret"
@@ -294,12 +299,29 @@ zapret_version_ask() {
             else
                 git checkout $version
             fi
+            # Выходим
             cd "$BASE_DIR"
+            # Переименовываем
             "$BASE_DIR/rename_bat.sh" || handle_error "Ошибка при переименовании файлов"
+            # Выключаем
             exit 0
         fi
         echo "Такой версии нет"
     done
+}
+
+# Функция инициализации lists
+lists_init() {
+    mkdir -p "$LISTS_DIR"
+    cp "$ORIGIN_LISTS_DIR"/* "$LISTS_DIR/"
+    log "Успешно создана папка lists"
+}
+
+# Функция перемещения lists
+lists_move() {
+    rm "$ORIGIN_LISTS_DIR"/*
+    cp "$LISTS_DIR"/* "$ORIGIN_LISTS_DIR"
+    log "Скопированы lists"
 }
 
 # Основная функция
@@ -327,6 +349,7 @@ main() {
 
     check_dependencies
     setup_repository
+    lists_move
 
     # Включение GameFilter
     if $NOINTERACTIVE; then

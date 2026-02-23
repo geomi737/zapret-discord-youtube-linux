@@ -12,7 +12,7 @@ NFQWS_PATH="$BASE_DIR/nfqws"
 CONF_FILE="$BASE_DIR/conf.env"
 STOP_SCRIPT="$BASE_DIR/stop_and_clean_nft.sh"
 MAIN_REPO_REV="7952e58ee8b068b731d55d2ef8f491fd621d6ff0"
-LISTS_DIR="$BASE_DIR/lists_cloned"
+LISTS_DIR="$BASE_DIR/lists"
 ORIGIN_LISTS_DIR="$BASE_DIR/zapret-latest/lists"
 
 # Флаг отладки

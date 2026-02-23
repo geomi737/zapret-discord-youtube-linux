@@ -86,9 +86,6 @@ first_nointeractive_handler() {
         # Получение интерфейса
         setup_interface
         echo "interface=$interface" >> "$CONF_FILE"
-        
-        #Перезапуск
-        _term
     fi
 }
 
@@ -340,10 +337,6 @@ setup_interface() {
 # Основная функция
 main() {
 
-    #Проверка зависимостей (почему то была снизу)
-    check_dependencies
-    setup_repository
-
     #Основной скрипт
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -351,10 +344,11 @@ main() {
             DEBUG=true
             shift
             ;;
+
+        
         -nointeractive)
             NOINTERACTIVE=true
             shift
-            load_config
             ;;
         *)
             break
@@ -362,9 +356,13 @@ main() {
         esac
     done
 
+    #Проверка зависимостей
+    check_dependencies
+    setup_repository
 
     # Включение GameFilter
     if $NOINTERACTIVE; then
+        load_config 
         _term
         sleep 1
 

@@ -7,6 +7,7 @@ BASE_DIR="$(realpath "$(dirname "$0")")"
 REPO_DIR="$BASE_DIR/zapret-latest"
 CUSTOM_DIR="./custom-strategies"
 REPO_URL="https://github.com/Flowseal/zapret-discord-youtube"
+STRATEGY_DIR="$BASE_DIR/repo-strategies"
 NFQWS_PATH="$BASE_DIR/nfqws"
 CONF_FILE="$BASE_DIR/conf.env"
 STOP_SCRIPT="$BASE_DIR/stop_and_clean_nft.sh"
@@ -15,6 +16,7 @@ MAIN_REPO_REV="7952e58ee8b068b731d55d2ef8f491fd621d6ff0"
 # Флаг отладки
 DEBUG=false
 NOINTERACTIVE=false
+SWITCHVER=false
 
 # GameFilter
 GAME_FILTER_PORTS="1024-65535"
@@ -70,16 +72,25 @@ load_config() {
 # Функция для настройки репозитория
 setup_repository() {
     if [ -d "$REPO_DIR" ]; then
+        if $SWITCHVER; then
+            zapret_version_ask
+            return
+        fi
         log "Использование существующей версии репозитория."
         return
     else
-        zapret_version_ask
         log "Клонирование репозитория..."
-        git clone --depth 1 --branch $version $REPO_URL || handle_error "Ошибка при клонировании репозитория"
-        cd "$REPO_DIR" && git checkout $MAIN_REPO_REV && cd ..
+        git clone "$REPO_URL" "$REPO_DIR" || handle_error "Ошибка при клонировании репозитория"
+        cd "$REPO_DIR"
         # rename_bat.sh
         chmod +x "$BASE_DIR/rename_bat.sh"
-        rm -rf "$REPO_DIR/.git"
+        if $SWITCHVER; then
+            zapret_version_ask
+        else
+            git checkout $MAIN_REPO_REV
+        fi
+        cd ..
+        # rm -rf "$REPO_DIR/.git"
         "$BASE_DIR/rename_bat.sh" || handle_error "Ошибка при переименовании файлов"
     fi
 }
@@ -98,7 +109,7 @@ select_strategy() {
         cd "$CUSTOM_DIR" && custom_files=($(ls *.bat 2>/dev/null)) && cd ..
     fi
 
-    cd "$REPO_DIR" || handle_error "Не удалось перейти в директорию $REPO_DIR"
+    cd "$STRATEGY_DIR" || handle_error "Не удалось перейти в директорию $STRATEGY_DIR"
 
     if $NOINTERACTIVE; then
         if [ ! -f "$strategy" ] && [ ! -f "../$CUSTOM_DIR/$strategy" ]; then
@@ -130,9 +141,9 @@ select_strategy() {
             # Определяем полный путь для парсера перед выходом из папки
             local final_path=""
             if [ -f "$strategy" ]; then
-                final_path="$REPO_DIR/$strategy"
+                final_path="$STRATEGY_DIR/$strategy"
             else
-                final_path="$REPO_DIR/../$CUSTOM_DIR/$strategy"
+                final_path="$STRATEGY_DIR/../$CUSTOM_DIR/$strategy"
             fi
 
             cd ..
@@ -273,11 +284,20 @@ start_nfqws() {
 
 #Функция выбора версии zapret от flowseal
 zapret_version_ask() {
+    cd "$REPO_DIR"
     echo "Выберите версию zapret"
-    select version in $(git tag); do
-        if [[ -n version ]]; then
+    select version in "$MAIN_REPO_REV (default)" $(git tag); do
+        if [[ -n "$version" ]]; then
             log "Выбрана версия $version"
-            break
+            if [[ "$MAIN_REPO_REV (default)" == "$version" ]]; then
+                git checkout $MAIN_REPO_REV
+            else
+                git checkout $version
+            fi
+            cd "$BASE_DIR"
+            "$BASE_DIR/rename_bat.sh" || handle_error "Ошибка при переименовании файлов"
+            exit 0
+        fi
         echo "Такой версии нет"
     done
 }
@@ -294,6 +314,10 @@ main() {
             NOINTERACTIVE=true
             shift
             load_config
+            ;;
+        -switchver)
+            SWITCHVER=true
+            shift
             ;;
         *)
             break

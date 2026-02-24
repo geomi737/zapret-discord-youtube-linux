@@ -18,21 +18,6 @@ BACKENDS_DIR="$HOME_DIR_PATH/init-backends"
 source "$HOME_DIR_PATH/lib/constants.sh"
 source "$HOME_DIR_PATH/lib/common.sh"
 
-edit_conf_file() {
-    echo "Изменение конфигурации..."
-    create_conf_file
-    echo "Конфигурация обновлена."
-
-    # Если сервис активен, предлагаем перезапустить
-    check_service_status >/dev/null 2>&1
-    if [ $? -eq 2 ]; then
-        read -p "Сервис активен. Перезапустить сервис для применения новых настроек? (Y/n): " answer
-        if [[ ${answer:-Y} =~ ^[Yy]$ ]]; then
-            restart_service
-        fi
-    fi
-}
-
 detect_init_system() {
     COMM=$(sudo cat /proc/1/comm 2>/dev/null | tr -d '\n')
     EXE=$(sudo readlink -f /proc/1/exe 2>/dev/null)
@@ -109,7 +94,7 @@ show_menu() {
         read -p "Выберите действие: " choice
         case $choice in
         1) install_service ;;
-        2) edit_conf_file ;;
+        2) create_conf_file ;;
         esac
         ;;
     2)
@@ -122,7 +107,7 @@ show_menu() {
         1) remove_service ;;
         2) stop_service ;;
         3) restart_service ;;
-        4) edit_conf_file ;;
+        4) create_conf_file ;;
         esac
         ;;
     3)
@@ -133,7 +118,7 @@ show_menu() {
         case $choice in
         1) remove_service ;;
         2) start_service ;;
-        3) edit_conf_file ;;
+        3) create_conf_file ;;
         esac
         ;;
     *)

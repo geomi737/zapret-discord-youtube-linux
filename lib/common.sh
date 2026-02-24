@@ -69,15 +69,16 @@ check_conf_file() {
 # Загрузка конфигурации из файла [depends create_conf_file]
 load_config() {
     local conf_file="${1:-$CONF_FILE}"
-
-    if [[ ! -f "$conf_file" ]] || [[ -z "$interface" ]] || [[ -z "$gamefilter" ]] || [[ -z "$strategy" ]]; then
-        rm -f "$conf_file"
+    
+    if [[ ! -f "$conf_file" ]]; then
         create_conf_file
-        exit 0
     fi
-
+    
     source "$conf_file"
 
+    if [[ -z "$interface" ]] || [[ -z "$gamefilter" ]] || [[ -z "$strategy" ]]; then
+        create_conf_file
+    fi
 }
 
 # Функция для интерактивного создания файла конфигурации conf.env
@@ -118,6 +119,14 @@ gamefilter=$gamefilter_choice
 strategy=$strategy_choice
 EOF
     echo "Конфигурация записана в $CONF_FILE."
+
+    check_service_status >/dev/null 2>&1
+    if [ $? -eq 2 ]; then
+        read -p "Сервис активен. Перезапустить сервис для применения новых настроек? (Y/n): " answer
+        if [[ ${answer:-Y} =~ ^[Yy]$ ]]; then
+            restart_service
+        fi
+    fi
 }
 
 # -----------------------------------------------------------------------------

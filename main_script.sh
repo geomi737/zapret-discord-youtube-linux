@@ -106,15 +106,9 @@ setup_repository() {
         log "Клонирование репозитория..."
         git clone "$REPO_URL" "$REPO_DIR" || handle_error "Ошибка при клонировании репозитория"
         cd "$REPO_DIR"
-        # rename_bat.sh
         chmod +x "$BASE_DIR/rename_bat.sh"
-        if $SWITCHVER; then
-            zapret_version_ask
-        else
-            git checkout $MAIN_REPO_REV
-        fi
+        git checkout $MAIN_REPO_REV
         cd ..
-
         # Инициализация lists
         lists_init
         # Переименование стратегий
@@ -319,6 +313,10 @@ start_nfqws() {
 
     debug_log "Запуск nfqws с параметрами: $NFQWS_PATH --daemon --dpi-desync-fwmark=0x40000000 --qnum=220 $full_params"
     eval "sudo $NFQWS_PATH --daemon --dpi-desync-fwmark=0x40000000 --qnum=220 $full_params" ||
+        # Проверка версии zapret
+        if ! [[ $version == $MAIN_REPO_REV ]]; then
+            handle_error "Выбранная версия zapret не поддерживается"
+        fi
         handle_error "Ошибка при запуске nfqws"
 }
 
@@ -347,18 +345,22 @@ zapret_version_ask() {
 
 # Функция инициализации lists
 lists_init() {
-    mkdir -p "$LISTS_DIR"
-    cp "$ORIGIN_LISTS_DIR"/* "$LISTS_DIR/"
-    sudo chmod 707 "$LISTS_DIR"
-    sudo chmod 606 "$LISTS_DIR"/*
-    log "Успешно проиницализирована папка lists"
+    if [ -d "$ORIGIN_LISTS_DIR" ]; then
+        mkdir -p "$LISTS_DIR"
+        cp "$ORIGIN_LISTS_DIR"/* "$LISTS_DIR/"
+        sudo chmod 707 "$LISTS_DIR"
+        sudo chmod 606 "$LISTS_DIR"/*
+        log "Успешно проиницализирована папка lists"
+    fi
 }
 
 # Функция перемещения lists
 lists_move() {
-    rm "$ORIGIN_LISTS_DIR"/*
-    cp "$LISTS_DIR"/* "$ORIGIN_LISTS_DIR"
-    log "Скопированы lists"
+    if [ -d "$ORIGIN_LISTS_DIR" ]; then
+        rm "$ORIGIN_LISTS_DIR"/*
+        cp "$LISTS_DIR"/* "$ORIGIN_LISTS_DIR"
+        log "Скопированы lists"
+    fi
 }
 
 # Функция получения GameFilter значения

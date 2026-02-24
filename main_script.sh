@@ -295,9 +295,9 @@ zapret_version_ask() {
         if [[ -n "$version" ]]; then
             log "Выбрана версия $version"
             if [[ "$MAIN_REPO_REV (default)" == "$version" ]]; then
-                git checkout $MAIN_REPO_REV
+                git checkout -f $MAIN_REPO_REV
             else
-                git checkout $version
+                git checkout -f $version
             fi
             # Выходим
             cd "$BASE_DIR"
@@ -316,7 +316,7 @@ lists_init() {
     cp "$ORIGIN_LISTS_DIR"/* "$LISTS_DIR/"
     sudo chmod 707 "$LISTS_DIR"
     sudo chmod 606 "$LISTS_DIR"/*
-    log "Успешно создана папка lists"
+    log "Успешно проиницализирована папка lists"
 }
 
 # Функция перемещения lists

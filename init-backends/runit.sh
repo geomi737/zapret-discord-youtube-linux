@@ -40,9 +40,9 @@ install_service() {
 
     # Получение абсолютного пути к основному скрипту и скрипту остановки
     local absolute_homedir_path
-    absolute_homedir_path="$(realpath "$HOME_DIR_PATH")"
+    absolute_homedir_path="$(realpath "$BASE_DIR")"
     local absolute_main_script_path
-    absolute_main_script_path="$(realpath "$MAIN_SCRIPT_PATH")"
+    absolute_main_script_path="$(realpath "$BASE_DIR/main_script.sh")"
     local absolute_stop_script_path
     absolute_stop_script_path="$(realpath "$STOP_SCRIPT")"
 

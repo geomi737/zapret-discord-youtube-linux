@@ -2,18 +2,12 @@
 
 set -e
 
-# Константы путей
 BASE_DIR="$(realpath "$(dirname "$0")")"
-REPO_DIR="$BASE_DIR/zapret-latest"
-CUSTOM_DIR="$BASE_DIR/custom-strategies"
-CUSTOM_STRATEGIES_DIR="$BASE_DIR/custom-strategies"
-NFQWS_PATH="$BASE_DIR/nfqws"
-CONF_FILE="$BASE_DIR/conf.env"
-STOP_SCRIPT="$BASE_DIR/stop_and_clean_nft.sh"
 
 # Подключаем общие библиотеки
 source "$BASE_DIR/lib/constants.sh"
 source "$BASE_DIR/lib/common.sh"
+source "$BASE_DIR/lib/consts.sh"
 
 # Флаги
 DEBUG=false
@@ -34,18 +28,18 @@ find_bat_files() {
 select_strategy() {
     # Сначала собираем кастомные файлы
     local custom_files=()
-    if [ -d "$CUSTOM_DIR" ]; then
-        cd "$CUSTOM_DIR" && custom_files=($(ls *.bat 2>/dev/null)) && cd ..
+    if [ -d "$CUSTOM_STRATEGIES_DIR" ]; then
+        cd "$CUSTOM_STRATEGIES_DIR" && custom_files=($(ls *.bat 2>/dev/null)) && cd ..
     fi
 
-    cd "$REPO_DIR" || handle_error "Не удалось перейти в директорию $REPO_DIR"
+    cd "$STRATEGIES_DIR" || handle_error "Не удалось перейти в директорию $STRATEGIES_DIR"
 
     if $NOINTERACTIVE; then
-        if [ ! -f "$strategy" ] && [ ! -f "../$CUSTOM_DIR/$strategy" ]; then
+        if [ ! -f "$strategy" ] && [ ! -f "$CUSTOM_STRATEGIES_DIR/$strategy" ]; then
             handle_error "Указанный .bat файл стратегии $strategy не найден"
         fi
         # Проверяем, где лежит файл, чтобы распарсить
-        [ -f "$strategy" ] && parse_bat_file "$strategy" || parse_bat_file "../$CUSTOM_DIR/$strategy"
+        [ -f "$strategy" ] && parse_bat_file "$strategy" || parse_bat_file "../$CUSTOM_STRATEGIES_DIR/$strategy"
         cd ..
         return
     fi
@@ -70,9 +64,9 @@ select_strategy() {
             # Определяем полный путь для парсера перед выходом из папки
             local final_path=""
             if [ -f "$strategy" ]; then
-                final_path="$REPO_DIR/$strategy"
+                final_path="$STRATEGIES_DIR/$strategy"
             else
-                final_path="$REPO_DIR/../$CUSTOM_DIR/$strategy"
+                final_path="$REPO_DIR/../$CUSTOM_STRATEGIES_DIR/$strategy"
             fi
 
             cd ..
@@ -226,8 +220,19 @@ main() {
     check_dependencies
     setup_repository
 
+    # Проверка существования strategy директории
+    if ! [ -d "$STRATEGIES_DIR" ]; then
+        "$BASE_DIR/rename_bat.sh" || handle_error "Ошибка при переименовании файлов"
+    fi
+
+    # Проверка существования lists директории
+    if ! [ -d "$LISTS_DIR" ]; then
+        lists_init "$ORIGIN_LIST_DIR" "$LISTS_DIR"
+    fi
+    lists_move "$ORIGIN_LIST_DIR" "$LISTS_DIR"
+
     # Включение GameFilter
-    if $NOINTERACTIVE; then
+    if "$NOINTERACTIVE"; then
         _term
         sleep 1
 

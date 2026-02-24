@@ -70,21 +70,27 @@ check_conf_file() {
 load_config() {
     local conf_file="${1:-$CONF_FILE}"
     
-    if [[ ! -f "$conf_file" ]]; then
-        create_conf_file
+    if ! check_conf_file; then
+        read -p "Конфигурация отсутствует или неполная. Создать конфигурацию сейчас? (y/n): " answer
+        if [[ $answer =~ ^[Yy]$ ]]; then
+            create_conf_file
+        else
+            echo "Установка отменена."
+            return
+        fi
+        # Перепроверяем конфигурацию
+        if ! check_conf_file; then
+            echo "Файл конфигурации все еще некорректен. Установка отменена."
+            return
+        fi
     fi
     
     source "$conf_file"
-
-    if [[ -z "$interface" ]] || [[ -z "$gamefilter" ]] || [[ -z "$strategy" ]]; then
-        create_conf_file
-    fi
 }
 
 # Функция для интерактивного создания файла конфигурации conf.env
 create_conf_file() {
     echo "Конфигурация отсутствует или неполная. Создаем новый конфиг."
-
     # 1. Выбор интерфейса
     local interfaces=("any" $(ls /sys/class/net))
     if [ ${#interfaces[@]} -eq 0 ]; then
@@ -118,6 +124,7 @@ interface=$chosen_interface
 gamefilter=$gamefilter_choice
 strategy=$strategy_choice
 EOF
+
     echo "Конфигурация записана в $CONF_FILE."
 
     check_service_status >/dev/null 2>&1
@@ -128,7 +135,6 @@ EOF
         fi
     fi
 }
-
 # -----------------------------------------------------------------------------
 # Проверка статуса nfqws
 # -----------------------------------------------------------------------------
@@ -141,9 +147,7 @@ check_nfqws_status() {
     fi
 }
 
-# -----------------------------------------------------------------------------
-# Работа со стратегиями
-# -----------------------------------------------------------------------------
+
 
 # Настройка репозитория со стратегиями
 # Требует: REPO_DIR, REPO_URL, MAIN_REPO_REV, BASE_DIR
@@ -157,12 +161,10 @@ setup_repository() {
     git clone "$REPO_URL" "$REPO_DIR" || handle_error "Ошибка при клонировании репозитория"
     cd "$REPO_DIR" && git checkout "$MAIN_REPO_REV" && cd ..
     chmod +x "$BASE_DIR/rename_bat.sh"
-    rm -rf "$REPO_DIR/.git"
-    "$BASE_DIR/rename_bat.sh" || handle_error "Ошибка при переименовании файлов"
 }
 
 # Получение списка доступных стратегий (имена файлов)
-# Требует: REPO_DIR, CUSTOM_STRATEGIES_DIR
+# Требует: STRATEGIES_DIR, CUSTOM_STRATEGIES_DIR
 get_strategies() {
     {
         # Кастомные стратегии
@@ -170,8 +172,8 @@ get_strategies() {
             find "$CUSTOM_STRATEGIES_DIR" -maxdepth 1 -type f -name "*.bat" -printf "%f\n" 2>/dev/null
         fi
         # Стратегии из репозитория
-        if [ -d "$REPO_DIR" ]; then
-            find "$REPO_DIR" -maxdepth 1 -type f \( -name "general*.bat" -o -name "discord*.bat" \) -printf "%f\n" 2>/dev/null
+        if [ -d "$STRATEGIES_DIR" ]; then
+            find "$STRATEGIES_DIR" -maxdepth 1 -type f \( -name "general*.bat" -o -name "discord*.bat" \) -printf "%f\n" 2>/dev/null
         fi
     } | sort -u
 }
@@ -227,4 +229,34 @@ select_strategy_interactive() {
         fi
         echo "Неверный выбор. Попробуйте еще раз."
     done
+}
+
+# -----------------------------------------------------------------------------
+# Работа с листами
+# -----------------------------------------------------------------------------
+
+# Перемещение листов из zapret-latest в lists_dir [depends setup_repository]
+lists_init() {
+    local origin_list_dir="$1"
+    local lists_dir="$2"
+
+    if [ -d "$origin_list_dir" ]; then
+        mkdir -p "$lists_dir"
+        cp "$origin_list_dir"/* "$lists_dir/"
+        sudo chmod 707 "$lists_dir"
+        sudo chmod 606 "$lists_dir"/*
+        log "Успешно проиницализирована папка lists"
+    fi
+}
+
+# Перемещение листов из lists_dir в zapret-latest
+lists_move() {
+    local origin_list_dir="$1"
+    local lists_dir="$2"
+
+    if [ -d "$origin_list_dir" ]; then
+        rm -f "$origin_list_dir"/*
+        cp "$lists_dir"/* "$origin_list_dir"
+        log "Скопированы lists"
+    fi
 }

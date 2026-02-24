@@ -9,17 +9,16 @@
 # КОНФИГУРАЦИЯ
 # ═══════════════════════════════════════════════════════════
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MAIN_SCRIPT="$SCRIPT_DIR/main_script.sh"
-STOP_SCRIPT="$SCRIPT_DIR/stop_and_clean_nft.sh"
-REPO_DIR="$SCRIPT_DIR/zapret-latest"
-CUSTOM_DIR="$SCRIPT_DIR/custom-strategies"
-CONF_FILE="$SCRIPT_DIR/conf.env"
-RESULTS_FILE="$SCRIPT_DIR/auto_tune_youtube_results.txt"
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Подключаем константы
+source "$BASE_DIR/lib/consts.sh"
+
 
 WAIT_TIME=2           # Пауза после запуска стратегии (сек)
 CURL_TIMEOUT=3        # Таймаут curl (сек)
 #MIN_RESPONSE_SIZE=1000 # Минимум байт для валидного ответа
+RESULTS_FILE="$BASE_DIR/auto_tune_results.txt"
 
 # Цвета
 RED='\033[0;31m'
@@ -39,22 +38,27 @@ SUCCESS_COUNT=0
 FAILED_COUNT=0
 
 # ═══════════════════════════════════════════════════════════
+# Переименование если запуск был после смены версии
+# ═══════════════════════════════════════════════════════════
+"$BASE_DIR/rename_bat.sh"
+
+# ═══════════════════════════════════════════════════════════
 # ФУНКЦИИ: Работа со стратегиями
 # ═══════════════════════════════════════════════════════════
 
 # Загрузить список стратегий (порядок как в main_script.sh)
 load_strategy_files() {
     # 1. Кастомные стратегии
-    if [[ -d "$CUSTOM_DIR" ]]; then
-        for file in "$CUSTOM_DIR"/*.bat; do
+    if [[ -d "$CUSTOM_STRATEGIES_DIR" ]]; then
+        for file in "$CUSTOM_STRATEGIES_DIR"/*.bat; do
             [[ -f "$file" ]] && STRATEGY_FILES+=("$(basename "$file")")
         done
     fi
     # 2. Стандартные из репозитория
-    if [[ -d "$REPO_DIR" ]]; then
+    if [[ -d "$STRATEGIES_DIR" ]]; then
         while IFS= read -r -d '' file; do
             STRATEGY_FILES+=("$(basename "$file")")
-        done < <(find "$REPO_DIR" -maxdepth 1 -type f \( -name "general*.bat" -o -name "discord.bat" \) -print0)
+        done < <(find "$STRATEGIES_DIR" -maxdepth 1 -type f \( -name "general*.bat" -o -name "discord.bat" \) -print0)
     fi
 }
 
@@ -87,14 +91,14 @@ stop_zapret() {
 run_strategy() {
     local num=$1
     # Передаём: y (подтверждение), номер стратегии, 1 (any интерфейс)
-    printf "y\n%d\n1\n" "$num" | "$MAIN_SCRIPT" &
+    printf "y\n%d\n1\n" "$num" | "$BASE_DIR/main_script.sh" &
     sleep "$WAIT_TIME"
 }
 
 # Запустить main с стратегией (не в фоне, для постоянного использования)
 launch_main_script() {
     local num=$1
-    printf "y\n%d\n1\n" "$num" | "$MAIN_SCRIPT"
+    printf "y\n%d\n1\n" "$num" | "$BASE_DIR/main_script.sh"
 }
 
 # ═══════════════════════════════════════════════════════════
@@ -247,7 +251,7 @@ if ! command -v curl &>/dev/null; then
     echo "❌ curl не установлен. Установите: sudo apt install curl"
     exit 1
 fi
-if [[ ! -f "$MAIN_SCRIPT" ]]; then
+if [[ ! -f "$BASE_DIR/main_script.sh" ]]; then
     echo "❌ main_script.sh не найден"
     exit 1
 fi

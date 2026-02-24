@@ -4,19 +4,12 @@
 # Переменные
 # =============================================================================
 
-# Константы путей
-HOME_DIR_PATH="$(realpath "$(dirname "$0")")"
-BASE_DIR="$HOME_DIR_PATH"
-MAIN_SCRIPT_PATH="$HOME_DIR_PATH/main_script.sh"
-CONF_FILE="$HOME_DIR_PATH/conf.env"
-STOP_SCRIPT="$HOME_DIR_PATH/stop_and_clean_nft.sh"
-CUSTOM_STRATEGIES_DIR="$HOME_DIR_PATH/custom-strategies"
-REPO_DIR="$HOME_DIR_PATH/zapret-latest"
-BACKENDS_DIR="$HOME_DIR_PATH/init-backends"
+BASE_DIR="$(realpath "$(dirname "$0")")"
 
 # Подключаем общие библиотеки
-source "$HOME_DIR_PATH/lib/constants.sh"
-source "$HOME_DIR_PATH/lib/common.sh"
+source "$BASE_DIR/lib/constants.sh"
+source "$BASE_DIR/lib/common.sh"
+source "$BASE_DIR/lib/consts.sh"
 
 detect_init_system() {
     COMM=$(sudo cat /proc/1/comm 2>/dev/null | tr -d '\n')
@@ -91,10 +84,12 @@ show_menu() {
     1)
         echo "1. Установить и запустить сервис"
         echo "2. Изменить конфигурацию"
+        echo "3. Изменить версию Zapret"
         read -p "Выберите действие: " choice
         case $choice in
         1) install_service ;;
         2) create_conf_file ;;
+        3) version_change ;;
         esac
         ;;
     2)
@@ -102,23 +97,27 @@ show_menu() {
         echo "2. Остановить сервис"
         echo "3. Перезапустить сервис"
         echo "4. Изменить конфигурацию"
+        echo "5. Изменить версию Zapret"
         read -p "Выберите действие: " choice
         case $choice in
         1) remove_service ;;
         2) stop_service ;;
         3) restart_service ;;
         4) create_conf_file ;;
+        5) version_change ;;
         esac
         ;;
     3)
         echo "1. Удалить сервис"
         echo "2. Запустить сервис"
         echo "3. Изменить конфигурацию"
+        echo "4. Изменить версию Zapret"
         read -p "Выберите действие: " choice
         case $choice in
         1) remove_service ;;
         2) start_service ;;
         3) create_conf_file ;;
+        4) version_change ;;
         esac
         ;;
     *)
@@ -184,6 +183,35 @@ ENV
     fi
 }
 
+# Функция для смены версии zapret
+version_change() {
+    # Заходим
+    cd "$REPO_DIR"
+    echo "**ВНИМАНИЕ! ФУНКЦИЯ ТЕСТОВАЯ! КРАЙНЕ РАННИЕ ИЛИ СЛИШКОМ НОВЫЕ ВЕРСИИ РАБОТАТЬ НЕ ОБЯЗАНЫ!**"
+    echo "**ПРИ ПРОБЛЕМАХ С ДАННЫМИ ВЕРСИЯМИ ISSUE ОТКРЫВАТЬ НЕ СЛЕДУЕТ!**"
+    echo "Выберите версию zapret"
+    select version in "$MAIN_REPO_REV (default)" $(git tag); do
+        if [[ -n "$version" ]]; then
+            log "Выбрана версия $version"
+            if [[ "$MAIN_REPO_REV (default)" == "$version" ]]; then
+                git checkout -f $MAIN_REPO_REV
+            else
+                git checkout -f $version
+            fi
+            # Выходим
+            cd "$BASE_DIR"
+            # Переименовываем
+            "$BASE_DIR/rename_bat.sh" || handle_error "Ошибка при переименовании файлов"
+            echo "$BASE_DIR/rename_bat.sh"
+            # Переделываем конфигурацию
+            create_conf_file
+            # Убираемся
+            exit 0
+        fi
+        echo "Такой версии нет"
+    done
+}
+
 # Помощь
 show_usage() {
     echo "Usage:"
@@ -197,6 +225,7 @@ show_usage() {
     echo "    -S --stop          Stop service"
     echo "    -r --restart       Just restart the service"
     echo "    -d --download      Download strategies repository"
+    echo "    -V --switchver     Switch zapret version"
     echo "    -l --strategies    List available strategies"
     echo "    -c --config        Show current config"
     echo "    -h --help          Show this help"
@@ -241,6 +270,9 @@ while [[ $# -gt 0 ]]; do
         -l|--strategies)
             show_strategies
             exit 0
+            ;;
+        -V|--switchver)
+            version_change
             ;;
         -d|--download)
             check_dependencies

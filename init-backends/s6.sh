@@ -23,7 +23,7 @@ check_service_status() {
 
 # Функция установки
 install_service() {
-    local absolute_homedir_path="$(realpath "${HOME_DIR_PATH:-$HOME}")"
+    local absolute_homedir_path="$(realpath "${BASE_DIR:-$HOME}")"
     local absolute_main_script_path="$(realpath "${MAIN_SCRIPT_PATH:-$HOME/main_script.sh}")"
     local absolute_stop_script_path="$(realpath "${STOP_SCRIPT:-$HOME/stop_and_clean_nft.sh}")"
 

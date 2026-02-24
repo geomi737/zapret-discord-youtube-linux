@@ -316,8 +316,9 @@ start_nfqws() {
         # Проверка версии zapret
         if ! [[ $version == $MAIN_REPO_REV ]]; then
             handle_error "Выбранная версия zapret не поддерживается"
+        else
+            handle_error "Ошибка при запуске nfqws"
         fi
-        handle_error "Ошибка при запуске nfqws"
 }
 
 # Функция выбора версии zapret от flowseal

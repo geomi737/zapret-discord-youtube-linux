@@ -66,19 +66,58 @@ check_conf_file() {
     return 0
 }
 
-# Загрузка конфигурации из файла
+# Загрузка конфигурации из файла [depends create_conf_file]
 load_config() {
     local conf_file="${1:-$CONF_FILE}"
 
-    if [[ ! -f "$conf_file" ]]; then
-        handle_error "Файл конфигурации $conf_file не найден"
+    if [[ ! -f "$conf_file" ]] || [[ -z "$interface" ]] || [[ -z "$gamefilter" ]] || [[ -z "$strategy" ]]; then
+        rm -f "$conf_file"
+        create_conf_file
+        exit 0
     fi
 
     source "$conf_file"
 
-    if [[ -z "$interface" ]] || [[ -z "$gamefilter" ]] || [[ -z "$strategy" ]]; then
-        handle_error "Отсутствуют обязательные параметры в конфигурационном файле"
+}
+
+# Функция для интерактивного создания файла конфигурации conf.env
+create_conf_file() {
+    echo "Конфигурация отсутствует или неполная. Создаем новый конфиг."
+
+    # 1. Выбор интерфейса
+    local interfaces=("any" $(ls /sys/class/net))
+    if [ ${#interfaces[@]} -eq 0 ]; then
+        handle_error "Не найдены сетевые интерфейсы"
     fi
+    echo "Доступные сетевые интерфейсы:"
+    select chosen_interface in "${interfaces[@]}"; do
+        if [ -n "$chosen_interface" ]; then
+            echo "Выбран интерфейс: $chosen_interface"
+            break
+        fi
+        echo "Неверный выбор. Попробуйте еще раз."
+    done
+
+    # 2. Gamefilter
+    read -p "Включить Gamefilter? [y/N] [n]: " enable_gamefilter
+    if [[ "$enable_gamefilter" =~ ^[Yy1] ]]; then
+        gamefilter_choice="true"
+    else
+        gamefilter_choice="false"
+    fi
+
+    # 3. Выбор стратегии (используем общие функции)
+    setup_repository
+    select_strategy_interactive
+    local strategy_choice="$selected_strategy"
+
+    # Записываем полученные значения в conf.env
+    cat <<EOF >"$CONF_FILE"
+interface=$chosen_interface
+gamefilter=$gamefilter_choice
+strategy=$strategy_choice
+EOF
+    echo "Конфигурация записана в $CONF_FILE."
 }
 
 # -----------------------------------------------------------------------------

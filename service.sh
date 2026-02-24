@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# =============================================================================
+# Переменные
+# =============================================================================
+
 # Константы путей
 HOME_DIR_PATH="$(realpath "$(dirname "$0")")"
 BASE_DIR="$HOME_DIR_PATH"
@@ -13,46 +17,6 @@ BACKENDS_DIR="$HOME_DIR_PATH/init-backends"
 # Подключаем общие библиотеки
 source "$HOME_DIR_PATH/lib/constants.sh"
 source "$HOME_DIR_PATH/lib/common.sh"
-
-# Функция для интерактивного создания файла конфигурации conf.env
-create_conf_file() {
-    echo "Конфигурация отсутствует или неполная. Создаем новый конфиг."
-
-    # 1. Выбор интерфейса
-    local interfaces=("any" $(ls /sys/class/net))
-    if [ ${#interfaces[@]} -eq 0 ]; then
-        handle_error "Не найдены сетевые интерфейсы"
-    fi
-    echo "Доступные сетевые интерфейсы:"
-    select chosen_interface in "${interfaces[@]}"; do
-        if [ -n "$chosen_interface" ]; then
-            echo "Выбран интерфейс: $chosen_interface"
-            break
-        fi
-        echo "Неверный выбор. Попробуйте еще раз."
-    done
-
-    # 2. Gamefilter
-    read -p "Включить Gamefilter? [y/N] [n]: " enable_gamefilter
-    if [[ "$enable_gamefilter" =~ ^[Yy1] ]]; then
-        gamefilter_choice="true"
-    else
-        gamefilter_choice="false"
-    fi
-
-    # 3. Выбор стратегии (используем общие функции)
-    setup_repository
-    select_strategy_interactive
-    local strategy_choice="$selected_strategy"
-
-    # Записываем полученные значения в conf.env
-    cat <<EOF >"$CONF_FILE"
-interface=$chosen_interface
-gamefilter=$gamefilter_choice
-strategy=$strategy_choice
-EOF
-    echo "Конфигурация записана в $CONF_FILE."
-}
 
 edit_conf_file() {
     echo "Изменение конфигурации..."

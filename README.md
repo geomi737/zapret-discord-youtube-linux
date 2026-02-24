@@ -75,15 +75,6 @@ ls /sys/class/net
 ```
 
 ## Неинтерактивный режим (conf.env)
-
-Создайте файл `conf.env`:
-
-```bash
-strategy=general.bat
-interface=enp0s3
-gamefilter=true
-```
-
 Запуск:
 ```bash
 sudo bash main_script.sh -nointeractive

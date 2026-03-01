@@ -18,8 +18,8 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-          # Mark issues as stale after 30 days of inactivity
-          days-before-stale: 30
+          # Mark issues as stale after 90 days of inactivity
+          days-before-stale: 90
           # Close stale issues after 7 days
           days-before-close: 7
           stale-issue-message: '⏳ Issue помечена как неактивная. Она будет автоматически закрыта через 7 дней, если не появится новых комментариев.'
